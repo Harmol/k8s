@@ -1,0 +1,11 @@
+apiVersion: diagnosis.kubediag.org/v1
+kind: Operation
+metadata:
+  name: http-operation
+spec:
+  processor:
+    externalAddress: http-operation.kubediag.svc.cluster.local
+    externalPort: 80
+    path: /
+    scheme: http
+    timeoutSeconds: 30
