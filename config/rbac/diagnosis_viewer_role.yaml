@@ -1,0 +1,20 @@
+# permissions for end users to view diagnoses.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: diagnosis-viewer-role
+rules:
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - diagnoses
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - diagnoses/status
+  verbs:
+  - get

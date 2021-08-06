@@ -1,0 +1,25 @@
+apiVersion: diagnosis.kubediag.org/v1
+kind: OperationSet
+metadata:
+  name: go-profiler
+spec:
+  adjacencyList:
+  - id: 0
+    to:
+    - 1
+  - id: 1
+    operation: go-profiler
+---
+apiVersion: diagnosis.kubediag.org/v1
+kind: Diagnosis
+metadata:
+  name: go-profiler
+spec: 
+  parameters:
+    param.diagnoser.runtime.go_profiler.expiration_seconds: "7200"
+    param.diagnoser.runtime.go_profiler.type: Heap
+    param.diagnoser.runtime.go_profiler.source: https://10.0.2.15:6443
+    param.diagnoser.runtime.go_profiler.tls.secret_reference.namespace: kubediag
+    param.diagnoser.runtime.go_profiler.tls.secret_reference.name: apiserver-profiler-sa-token-qz2t9
+  operationSet: go-profiler
+  nodeName: my-node

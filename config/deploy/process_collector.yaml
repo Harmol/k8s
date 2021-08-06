@@ -1,0 +1,10 @@
+apiVersion: diagnosis.kubediag.org/v1
+kind: Operation
+metadata:
+  name: process-collector
+spec:
+  processor:
+    httpServer:
+      path: /processor/processCollector
+      scheme: http
+    timeoutSeconds: 120

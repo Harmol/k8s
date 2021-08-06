@@ -1,0 +1,10 @@
+apiVersion: diagnosis.kubediag.org/v1
+kind: Operation
+metadata:
+  name: mount-info-collector
+spec:
+  processor:
+    httpServer:
+      path: /processor/mountInfoCollector
+      scheme: http
+    timeoutSeconds: 60

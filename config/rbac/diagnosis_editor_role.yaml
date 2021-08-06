@@ -1,0 +1,24 @@
+# permissions for end users to edit diagnoses.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: diagnosis-editor-role
+rules:
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - diagnoses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - diagnoses/status
+  verbs:
+  - get

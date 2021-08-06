@@ -1,0 +1,28 @@
+domain: kubediag.org
+repo: github.com/kubediag/kubediag
+resources:
+- group: diagnosis
+  kind: Diagnosis
+  version: v1
+- group: diagnosis
+  kind: Diagnoser
+  version: v1
+- group: diagnosis
+  kind: InformationCollector
+  version: v1
+- group: diagnosis
+  kind: Recoverer
+  version: v1
+- group: diagnosis
+  kind: DiagnosisSource
+  version: v1
+- group: diagnosis
+  kind: Operation
+  version: v1
+- group: diagnosis
+  kind: OperationSet
+  version: v1
+- group: diagnosis
+  kind: Trigger
+  version: v1
+version: "2"

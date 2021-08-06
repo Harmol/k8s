@@ -1,0 +1,1428 @@
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  name: diagnoses.diagnosis.kubediag.org
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.operationSet
+    name: OperationSet
+    type: string
+  - JSONPath: .spec.nodeName
+    name: NodeName
+    type: string
+  - JSONPath: .spec.podReference.namespace
+    name: PodNamespace
+    type: string
+  - JSONPath: .spec.podReference.name
+    name: PodName
+    type: string
+  - JSONPath: .spec.podReference.container
+    name: PodContainer
+    type: string
+  - JSONPath: .status.phase
+    name: Phase
+    type: string
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  group: diagnosis.kubediag.org
+  names:
+    kind: Diagnosis
+    listKind: DiagnosisList
+    plural: diagnoses
+    singular: diagnosis
+  scope: Namespaced
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: Diagnosis is the Schema for the diagnoses API.
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: DiagnosisSpec defines the desired state of Diagnosis.
+          properties:
+            nodeName:
+              description: One of NodeName and PodReference must be specified. NodeName
+                is a specific node which the diagnosis is on.
+              type: string
+            operationSet:
+              description: OperationSet is the name of operation set which represents
+                diagnosis pipeline to be executed.
+              type: string
+            parameters:
+              additionalProperties:
+                type: string
+              description: Parameters is a set of the parameters to be passed to opreations.
+                Parameters and OperationResults are encoded into a json object and
+                sent to operation processor when running diagnosis.
+              type: object
+            podReference:
+              description: PodReference contains details of the target pod.
+              properties:
+                container:
+                  description: Container specifies name of the target container.
+                  type: string
+                name:
+                  description: Name specifies the name of a kubernetes api resource.
+                  type: string
+                namespace:
+                  description: Namespace specifies the namespace of a kubernetes api
+                    resource.
+                  type: string
+              required:
+              - name
+              - namespace
+              type: object
+          required:
+          - operationSet
+          type: object
+        status:
+          description: DiagnosisStatus defines the observed state of Diagnosis.
+          properties:
+            checkpoint:
+              description: Checkpoint is the checkpoint for resuming unfinished diagnosis.
+              properties:
+                nodeIndex:
+                  description: NodeIndex is the index of current node in path.
+                  type: integer
+                pathIndex:
+                  description: PathIndex is the index of current path in operation
+                    set status.
+                  type: integer
+              required:
+              - nodeIndex
+              - pathIndex
+              type: object
+            conditions:
+              description: Conditions contains current service state of diagnosis.
+              items:
+                description: DiagnosisCondition contains details for the current condition
+                  of this diagnosis.
+                properties:
+                  lastTransitionTime:
+                    description: LastTransitionTime specifies last time the condition
+                      transitioned from one status to another.
+                    format: date-time
+                    type: string
+                  message:
+                    description: Message is a human readable message indicating details
+                      about last transition.
+                    type: string
+                  reason:
+                    description: Reason is a unique, one-word, CamelCase reason for
+                      the condition's last transition.
+                    type: string
+                  status:
+                    description: Status is the status of the condition. Can be True,
+                      False, Unknown.
+                    type: string
+                  type:
+                    description: Type is the type of the condition.
+                    type: string
+                required:
+                - status
+                - type
+                type: object
+              type: array
+            failedPaths:
+              description: FailedPaths contains all failed paths in diagnosis pipeline.
+                The last node in the path is the one which fails to execute operation.
+              items:
+                description: Path represents a linear ordering of nodes along the
+                  direction of every directed edge.
+                items:
+                  description: Node is a node in the directed acyclic graph. It contains
+                    details of the operation.
+                  properties:
+                    dependences:
+                      description: Dependences is the list of depended node ids.
+                      items:
+                        type: integer
+                      type: array
+                    id:
+                      description: ID is the unique identifier of the node. It is
+                        identical to node index in adjacency list and set by admission
+                        webhook server.
+                      type: integer
+                    operation:
+                      description: Operation is the name of operation running on the
+                        node. It is empty if the node is the first in the list.
+                      type: string
+                    to:
+                      description: To is the list of node ids this node links to.
+                      items:
+                        type: integer
+                      type: array
+                  type: object
+                type: array
+              type: array
+            operationResults:
+              additionalProperties:
+                type: string
+              description: OperationResults contains results of operations. Parameters
+                and OperationResults are encoded into a json object and sent to operation
+                processor when running diagnosis.
+              type: object
+            phase:
+              description: "Phase is a simple, high-level summary of where the diagnosis
+                is in its lifecycle. The conditions array, the reason and message
+                fields contain more detail about the pod's status. There are five
+                possible phase values: \n DiagnosisPending: The diagnosis has been
+                accepted by the system, but no operation has been started. DiagnosisRunning:
+                The diagnosis has been bound to a node and one of the operations have
+                been started. At least one operation is still running. DiagnosisSucceeded:
+                All operations in some path have voluntarily terminated with a response
+                code of 200, and the system is not going to execute rest operations.
+                DiagnosisFailed: All paths in the graph have terminated, and at least
+                one operation in each path terminated in a failure. DiagnosisUnknown:
+                For some reason the state of the diagnosis could not be obtained,
+                typically due to an error in communicating with the host of the diagnosis."
+              type: string
+            startTime:
+              description: StartTime is RFC 3339 date and time at which the object
+                was acknowledged by the system.
+              format: date-time
+              type: string
+            succeededPath:
+              description: SucceededPath is the succeeded paths in diagnosis pipeline.
+              items:
+                description: Node is a node in the directed acyclic graph. It contains
+                  details of the operation.
+                properties:
+                  dependences:
+                    description: Dependences is the list of depended node ids.
+                    items:
+                      type: integer
+                    type: array
+                  id:
+                    description: ID is the unique identifier of the node. It is identical
+                      to node index in adjacency list and set by admission webhook
+                      server.
+                    type: integer
+                  operation:
+                    description: Operation is the name of operation running on the
+                      node. It is empty if the node is the first in the list.
+                    type: string
+                  to:
+                    description: To is the list of node ids this node links to.
+                    items:
+                      type: integer
+                    type: array
+                type: object
+              type: array
+          type: object
+      type: object
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  name: operations.diagnosis.kubediag.org
+spec:
+  group: diagnosis.kubediag.org
+  names:
+    kind: Operation
+    listKind: OperationList
+    plural: operations
+    singular: operation
+  scope: Cluster
+  validation:
+    openAPIV3Schema:
+      description: Operation is the Schema for the operations API.
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: OperationSpec defines the desired state of Operation.
+          properties:
+            dependences:
+              description: Dependences is the list of all depended operations required
+                to be precedently executed.
+              items:
+                type: string
+              type: array
+            processor:
+              description: Processor describes how to register a operation processor
+                into kubediag.
+              properties:
+                httpServer:
+                  description: One and only one of the following processor should
+                    be specified. HTTPServer specifies the http server to do operations.
+                  properties:
+                    address:
+                      description: Address is the serving address of the processor.
+                        It must be either an ip or a dns address. Defaults to kubediag
+                        agent advertised address if not specified.
+                      type: string
+                    path:
+                      description: Path is the serving http path of processor.
+                      type: string
+                    port:
+                      description: Port is the serving port of the processor. Defaults
+                        to kubediag agent serving port if not specified.
+                      format: int32
+                      type: integer
+                    scheme:
+                      description: Scheme is the serving scheme of processor. It must
+                        be either http or https.
+                      type: string
+                  type: object
+                scriptRunner:
+                  description: ScriptRunner contains the information to run a script.
+                  properties:
+                    argKeys:
+                      description: ArgKeys contains a slice of keys in parameters
+                        or operationResults. The script arguments are generated from
+                        specified key value pairs. No argument will be passed to the
+                        script if not specified.
+                      items:
+                        type: string
+                      type: array
+                    operationResultKey:
+                      description: OperationResultKey is the prefix of keys to store
+                        script stdout, stderr or error message in operationResults.
+                        Execution results will not be updated if not specified.
+                      type: string
+                    script:
+                      description: Script is the content of shell script.
+                      type: string
+                  required:
+                  - script
+                  type: object
+                timeoutSeconds:
+                  description: Number of seconds after which the processor times out.
+                    Defaults to 30 seconds. Minimum value is 1.
+                  format: int32
+                  type: integer
+              type: object
+            storage:
+              description: Storage represents the type of storage for operation results.
+                Operation results will not be stored if nil.
+              properties:
+                hostPath:
+                  description: HostPath represents a directory on the host.
+                  properties:
+                    path:
+                      description: Path of the directory on the host. Defaults to
+                        kubediag agent data root if not specified.
+                      type: string
+                  required:
+                  - path
+                  type: object
+              type: object
+          required:
+          - processor
+          type: object
+      type: object
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  name: operationsets.diagnosis.kubediag.org
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .status.ready
+    name: Ready
+    type: boolean
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  group: diagnosis.kubediag.org
+  names:
+    kind: OperationSet
+    listKind: OperationSetList
+    plural: operationsets
+    singular: operationset
+  scope: Cluster
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: OperationSet is the Schema for the operationsets API.
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: OperationSetSpec defines the desired state of OperationSet.
+          properties:
+            adjacencyList:
+              description: AdjacencyList contains all nodes in the directed acyclic
+                graph. The first node in the list represents the start of a diagnosis.
+              items:
+                description: Node is a node in the directed acyclic graph. It contains
+                  details of the operation.
+                properties:
+                  dependences:
+                    description: Dependences is the list of depended node ids.
+                    items:
+                      type: integer
+                    type: array
+                  id:
+                    description: ID is the unique identifier of the node. It is identical
+                      to node index in adjacency list and set by admission webhook
+                      server.
+                    type: integer
+                  operation:
+                    description: Operation is the name of operation running on the
+                      node. It is empty if the node is the first in the list.
+                    type: string
+                  to:
+                    description: To is the list of node ids this node links to.
+                    items:
+                      type: integer
+                    type: array
+                type: object
+              type: array
+          required:
+          - adjacencyList
+          type: object
+        status:
+          description: OperationSetStatus defines the observed state of OperationSet.
+          properties:
+            paths:
+              description: Paths is the collection of all directed paths of the directed
+                acyclic graph.
+              items:
+                description: Path represents a linear ordering of nodes along the
+                  direction of every directed edge.
+                items:
+                  description: Node is a node in the directed acyclic graph. It contains
+                    details of the operation.
+                  properties:
+                    dependences:
+                      description: Dependences is the list of depended node ids.
+                      items:
+                        type: integer
+                      type: array
+                    id:
+                      description: ID is the unique identifier of the node. It is
+                        identical to node index in adjacency list and set by admission
+                        webhook server.
+                      type: integer
+                    operation:
+                      description: Operation is the name of operation running on the
+                        node. It is empty if the node is the first in the list.
+                      type: string
+                    to:
+                      description: To is the list of node ids this node links to.
+                      items:
+                        type: integer
+                      type: array
+                  type: object
+                type: array
+              type: array
+            ready:
+              description: Specifies whether a valid directed acyclic graph can be
+                generated via provided nodes.
+              type: boolean
+          required:
+          - ready
+          type: object
+      type: object
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: apiextensions.k8s.io/v1beta1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.2.5
+  creationTimestamp: null
+  name: triggers.diagnosis.kubediag.org
+spec:
+  additionalPrinterColumns:
+  - JSONPath: .spec.operationSet
+    name: OperationSet
+    type: string
+  - JSONPath: .status.ready
+    name: Ready
+    type: boolean
+  - JSONPath: .metadata.creationTimestamp
+    name: Age
+    type: date
+  group: diagnosis.kubediag.org
+  names:
+    kind: Trigger
+    listKind: TriggerList
+    plural: triggers
+    singular: trigger
+  scope: Cluster
+  subresources:
+    status: {}
+  validation:
+    openAPIV3Schema:
+      description: Trigger is the Schema for the triggers API.
+      properties:
+        apiVersion:
+          description: 'APIVersion defines the versioned schema of this representation
+            of an object. Servers should convert recognized schemas to the latest
+            internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+          type: string
+        kind:
+          description: 'Kind is a string value representing the REST resource this
+            object represents. Servers may infer this from the endpoint the client
+            submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+          type: string
+        metadata:
+          type: object
+        spec:
+          description: TriggerSpec defines the desired state of Trigger.
+          properties:
+            operationSet:
+              description: OperationSet is the name of referenced operation set in
+                the generated diagnosis.
+              type: string
+            sourceTemplate:
+              description: SourceTemplate is the template of trigger.
+              properties:
+                kubernetesEventTemplate:
+                  description: KubernetesEventTemplate specifies the template to create
+                    an diagnosis from a kubernetes event.
+                  properties:
+                    regexp:
+                      description: Regexp is the regular expression for matching kubernetes
+                        event template.
+                      properties:
+                        message:
+                          description: Message is the regular expression for matching
+                            "Message" of kubernetes event.
+                          type: string
+                        name:
+                          description: Name is the regular expression for matching
+                            "Name" of kubernetes event.
+                          type: string
+                        namespace:
+                          description: Namespace is the regular expression for matching
+                            "Namespace" of kubernetes event.
+                          type: string
+                        reason:
+                          description: Reason is the regular expression for matching
+                            "Reason" of kubernetes event.
+                          type: string
+                        source:
+                          description: Source is the regular expression for matching
+                            "Source" of kubernetes event. All fields of "Source" are
+                            regular expressions.
+                          properties:
+                            component:
+                              description: Component from which the event is generated.
+                              type: string
+                            host:
+                              description: Node name on which the event is generated.
+                              type: string
+                          type: object
+                      type: object
+                  required:
+                  - regexp
+                  type: object
+                prometheusAlertTemplate:
+                  description: One and only one of the following source should be
+                    specified. PrometheusAlertTemplate specifies the template to create
+                    an diagnosis from a prometheus alert.
+                  properties:
+                    containerReferenceLabel:
+                      description: ContainerReferenceLabel specifies the label for
+                        setting ".spec.podReference.container" of generated diagnosis.
+                        The label value will be set as ".spec.podReference.container"
+                        field.
+                      type: string
+                    nodeNameReferenceLabel:
+                      description: NodeNameReferenceLabel specifies the label for
+                        setting ".spec.nodeName" of generated diagnosis. The label
+                        value will be set as ".spec.nodeName" field.
+                      type: string
+                    parameterInjectionLabels:
+                      description: ParameterInjectionLabels specifies the labels for
+                        setting ".spec.parameters" of generated diagnosis. All label
+                        names and values will be set as key value pairs in ".spec.parameters"
+                        field.
+                      items:
+                        description: A LabelName is a key for a LabelSet or Metric.  It
+                          has a value associated therewith.
+                        type: string
+                      type: array
+                    podNameReferenceLabel:
+                      description: PodNameReferenceLabel specifies the label for setting
+                        ".spec.podReference.name" of generated diagnosis. The label
+                        value will be set as ".spec.podReference.name" field.
+                      type: string
+                    podNamespaceReferenceLabel:
+                      description: PodNamespaceReferenceLabel specifies the label
+                        for setting ".spec.podReference.namespace" of generated diagnosis.
+                        The label value will be set as ".spec.podReference.namespace"
+                        field.
+                      type: string
+                    regexp:
+                      description: Regexp is the regular expression for matching prometheus
+                        alert template.
+                      properties:
+                        alertName:
+                          description: AlertName is the regular expression for matching
+                            "AlertName" of prometheus alert.
+                          type: string
+                        annotations:
+                          additionalProperties:
+                            description: A LabelValue is an associated value for a
+                              LabelName.
+                            type: string
+                          description: Annotations is the regular expression for matching
+                            "Annotations" of prometheus alert. Only annotation values
+                            are regular expressions while all annotation names must
+                            be identical to the prometheus alert annotation names.
+                          type: object
+                        endsAt:
+                          description: EndsAt is the regular expression for matching
+                            "EndsAt" of prometheus alert.
+                          type: string
+                        generatorURL:
+                          description: GeneratorURL is the regular expression for
+                            matching "GeneratorURL" of prometheus alert.
+                          type: string
+                        labels:
+                          additionalProperties:
+                            description: A LabelValue is an associated value for a
+                              LabelName.
+                            type: string
+                          description: Labels is the regular expression for matching
+                            "Labels" of prometheus alert. Only label values are regular
+                            expressions while all label names must be identical to
+                            the prometheus alert label names.
+                          type: object
+                        startsAt:
+                          description: StartsAt is the regular expression for matching
+                            "StartsAt" of prometheus alert.
+                          type: string
+                      type: object
+                  required:
+                  - regexp
+                  type: object
+              type: object
+          required:
+          - operationSet
+          - sourceTemplate
+          type: object
+      type: object
+  version: v1
+  versions:
+  - name: v1
+    served: true
+    storage: true
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: apiserver-profiler-sa
+  namespace: kubediag
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kubediag
+  namespace: kubediag
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: leader-election-role
+  namespace: kubediag
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  verbs:
+  - get
+  - list
+  - watch
+  - create
+  - update
+  - patch
+  - delete
+- apiGroups:
+  - ""
+  resources:
+  - configmaps/status
+  verbs:
+  - get
+  - update
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: apiserver-profiler-role
+rules:
+- nonResourceURLs:
+  - /debug/pprof/*
+  verbs:
+  - get
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  creationTimestamp: null
+  name: kubediag-role
+rules:
+- apiGroups:
+  - apps
+  resources:
+  - daemonsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - deployments
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - apps
+  resources:
+  - statefulsets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - events/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  verbs:
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - pods
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - Operations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - Operations/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - diagnoses
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - diagnoses/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - operations
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - operationsets
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - operationsets/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - triggers
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - diagnosis.kubediag.org
+  resources:
+  - triggers/status
+  verbs:
+  - get
+  - patch
+  - update
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: leader-election-rolebinding
+  namespace: kubediag
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: leader-election-role
+subjects:
+- kind: ServiceAccount
+  name: kubediag
+  namespace: kubediag
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: apiserver-profiler-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: apiserver-profiler-role
+subjects:
+- kind: ServiceAccount
+  name: apiserver-profiler-sa
+  namespace: kubediag
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: kubediag-rolebinding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: kubediag-role
+subjects:
+- kind: ServiceAccount
+  name: kubediag
+  namespace: kubediag
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: kubediag
+    mode: agent
+  name: kubediag-agent-metrics-monitor
+  namespace: kubediag
+spec:
+  clusterIP: None
+  ports:
+  - name: metrics
+    port: 10355
+    targetPort: metrics
+  selector:
+    control-plane: kubediag
+    mode: agent
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: kubediag
+    mode: master
+  name: kubediag-master
+  namespace: kubediag
+spec:
+  ports:
+  - name: http
+    port: 8089
+    targetPort: http
+  selector:
+    control-plane: kubediag
+    mode: master
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    control-plane: kubediag
+    mode: master
+  name: kubediag-master-metrics-monitor
+  namespace: kubediag
+spec:
+  clusterIP: None
+  ports:
+  - name: metrics
+    port: 10357
+    targetPort: metrics
+  selector:
+    control-plane: kubediag
+    mode: master
+  type: ClusterIP
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: webhook-service
+  namespace: kubediag
+spec:
+  ports:
+  - port: 443
+    targetPort: 9443
+  selector:
+    control-plane: kubediag
+    mode: master
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    control-plane: kubediag
+    mode: master
+  name: kubediag-master
+  namespace: kubediag
+spec:
+  selector:
+    matchLabels:
+      control-plane: kubediag
+      mode: master
+  strategy:
+    rollingUpdate:
+      maxSurge: 1
+      maxUnavailable: 1
+    type: RollingUpdate
+  template:
+    metadata:
+      labels:
+        control-plane: kubediag
+        mode: master
+    spec:
+      containers:
+      - args:
+        - --mode=master
+        - --bind-address=$(POD_IP)
+        - --port=8089
+        - --metrics-port=10357
+        - --enable-leader-election=true
+        command:
+        - /kubediag
+        env:
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        image: hub.c.163.com/kubediag/kubediag:v0.2.0
+        name: kubediag
+        ports:
+        - containerPort: 9443
+          name: webhook-server
+          protocol: TCP
+        - containerPort: 10357
+          name: metrics
+        - containerPort: 8089
+          name: http
+        resources:
+          limits:
+            cpu: 400m
+            memory: 400Mi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          privileged: true
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /etc/kubediag/serving-certs
+          name: cert
+          readOnly: true
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      hostPID: true
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+      serviceAccountName: kubediag
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - operator: Exists
+      volumes:
+      - name: cert
+        secret:
+          defaultMode: 420
+          secretName: webhook-server-cert
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  labels:
+    control-plane: kubediag
+    mode: agent
+  name: kubediag-agent
+  namespace: kubediag
+spec:
+  selector:
+    matchLabels:
+      control-plane: kubediag
+      mode: agent
+  template:
+    metadata:
+      labels:
+        control-plane: kubediag
+        mode: agent
+    spec:
+      containers:
+      - args:
+        - --mode=agent
+        - --bind-address=$(POD_IP)
+        - --port=8090
+        - --metrics-port=10355
+        - --data-root=/var/lib/kubediag
+        - --node-name=$(NODE_NAME)
+        command:
+        - /kubediag
+        env:
+        - name: NODE_NAME
+          valueFrom:
+            fieldRef:
+              fieldPath: spec.nodeName
+        - name: POD_IP
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        image: hub.c.163.com/kubediag/kubediag:v0.2.0
+        name: kubediag
+        ports:
+        - containerPort: 10355
+          name: metrics
+        - containerPort: 8090
+          name: http
+        resources:
+          limits:
+            cpu: 2000m
+            memory: 4Gi
+          requests:
+            cpu: 100m
+            memory: 100Mi
+        securityContext:
+          privileged: true
+        terminationMessagePolicy: FallbackToLogsOnError
+        volumeMounts:
+        - mountPath: /var/run/docker.sock
+          name: docker-sock
+        - mountPath: /var/run/docker
+          name: docker-exec-root
+        - mountPath: /var/lib/docker
+          name: docker-data-root
+        - mountPath: /var/lib/kubelet
+          name: kubelet-data
+        - mountPath: /var/lib/kubediag
+          name: kubediag-data
+        - mountPath: /usr/local/bin/
+          name: usr-local-bin
+      dnsPolicy: ClusterFirstWithHostNet
+      hostNetwork: true
+      hostPID: true
+      securityContext:
+        runAsNonRoot: false
+        runAsUser: 0
+      serviceAccountName: kubediag
+      terminationGracePeriodSeconds: 10
+      tolerations:
+      - operator: Exists
+      volumes:
+      - hostPath:
+          path: /var/run/docker.sock
+          type: Socket
+        name: docker-sock
+      - hostPath:
+          path: /var/run/docker
+          type: Directory
+        name: docker-exec-root
+      - hostPath:
+          path: /var/lib/docker
+          type: Directory
+        name: docker-data-root
+      - hostPath:
+          path: /var/lib/kubelet
+          type: Directory
+        name: kubelet-data
+      - hostPath:
+          path: /var/lib/kubediag
+          type: DirectoryOrCreate
+        name: kubediag-data
+      - hostPath:
+          path: /usr/local/bin
+          type: DirectoryOrCreate
+        name: usr-local-bin
+  updateStrategy:
+    rollingUpdate:
+      maxUnavailable: 5
+    type: RollingUpdate
+---
+apiVersion: cert-manager.io/v1
+kind: Certificate
+metadata:
+  name: serving-cert
+  namespace: kubediag
+spec:
+  dnsNames:
+  - webhook-service.kubediag.svc
+  - webhook-service.kubediag.svc.cluster.local
+  issuerRef:
+    kind: Issuer
+    name: selfsigned-issuer
+  secretName: webhook-server-cert
+---
+apiVersion: cert-manager.io/v1
+kind: Issuer
+metadata:
+  name: selfsigned-issuer
+  namespace: kubediag
+spec:
+  selfSigned: {}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    control-plane: kubediag
+    mode: agent
+  name: kubediag-agent-metrics-monitor
+  namespace: kubediag
+spec:
+  endpoints:
+  - path: /metrics
+    port: metrics
+  namespaceSelector:
+    matchNames:
+    - kubediag
+  selector:
+    matchLabels:
+      control-plane: kubediag
+      mode: agent
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  labels:
+    control-plane: kubediag
+    mode: master
+  name: kubediag-master-metrics-monitor
+  namespace: kubediag
+spec:
+  endpoints:
+  - path: /metrics
+    port: metrics
+  namespaceSelector:
+    matchNames:
+    - kubediag
+  selector:
+    matchLabels:
+      control-plane: kubediag
+      mode: master
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: MutatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: kubediag/serving-cert
+  name: mutating-webhook-configuration
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: kubediag
+      path: /mutate-diagnosis-kubediag-org-v1-diagnosis
+  failurePolicy: Fail
+  name: mdiagnosis.kb.io
+  rules:
+  - apiGroups:
+    - diagnosis.kubediag.org
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - diagnoses
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: kubediag
+      path: /mutate-diagnosis-kubediag-org-v1-operation
+  failurePolicy: Fail
+  name: moperation.kb.io
+  rules:
+  - apiGroups:
+    - diagnosis.kubediag.org
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - operations
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: kubediag
+      path: /mutate-diagnosis-kubediag-org-v1-operationset
+  failurePolicy: Fail
+  name: moperationset.kb.io
+  rules:
+  - apiGroups:
+    - diagnosis.kubediag.org
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - operationsets
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: kubediag
+      path: /mutate-diagnosis-kubediag-org-v1-trigger
+  failurePolicy: Fail
+  name: mtrigger.kb.io
+  rules:
+  - apiGroups:
+    - diagnosis.kubediag.org
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - triggers
+---
+apiVersion: admissionregistration.k8s.io/v1beta1
+kind: ValidatingWebhookConfiguration
+metadata:
+  annotations:
+    cert-manager.io/inject-ca-from: kubediag/serving-cert
+  name: validating-webhook-configuration
+webhooks:
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: kubediag
+      path: /validate-diagnosis-kubediag-org-v1-diagnosis
+  failurePolicy: Fail
+  name: vdiagnosis.kb.io
+  rules:
+  - apiGroups:
+    - diagnosis.kubediag.org
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - diagnoses
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: kubediag
+      path: /validate-diagnosis-kubediag-org-v1-operation
+  failurePolicy: Fail
+  name: voperation.kb.io
+  rules:
+  - apiGroups:
+    - diagnosis.kubediag.org
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - operations
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: kubediag
+      path: /validate-diagnosis-kubediag-org-v1-operationset
+  failurePolicy: Fail
+  name: voperationset.kb.io
+  rules:
+  - apiGroups:
+    - diagnosis.kubediag.org
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - operationsets
+- clientConfig:
+    caBundle: Cg==
+    service:
+      name: webhook-service
+      namespace: kubediag
+      path: /validate-diagnosis-kubediag-org-v1-trigger
+  failurePolicy: Fail
+  name: vtrigger.kb.io
+  rules:
+  - apiGroups:
+    - diagnosis.kubediag.org
+    apiVersions:
+    - v1
+    operations:
+    - CREATE
+    - UPDATE
+    resources:
+    - triggers
