@@ -1,0 +1,10 @@
+apiVersion: diagnosis.kubediag.org/v1
+kind: Operation
+metadata:
+  name: docker-info-collector
+spec:
+  processor:
+    httpServer:
+      path: /processor/dockerInfoCollector
+      scheme: http
+    timeoutSeconds: 60

@@ -1,0 +1,10 @@
+apiVersion: diagnosis.kubediag.org/v1
+kind: Operation
+metadata:
+  name: pod-list-collector
+spec:
+  processor:
+    httpServer:
+      path: /processor/podListCollector
+      scheme: http
+    timeoutSeconds: 60
